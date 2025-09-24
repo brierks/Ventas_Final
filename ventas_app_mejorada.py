@@ -1,4 +1,3 @@
-
 import streamlit as st
 import pandas as pd
 import numpy as np
@@ -192,19 +191,21 @@ with st.spinner("🔄 Cargando y procesando datos..."):
 if df is not None:
     # Sidebar con filtros
     st.sidebar.title("🎛️ Panel de Control")
-    
-    # Filtros de fecha
+
+    # INFORMACIÓN DE FECHAS DISPONIBLES (SIN FILTRO)
     if 'fecha' in df.columns and not df['fecha'].isna().all():
-        min_date = df['fecha'].min().date()
-        max_date = df['fecha'].max().date()
-        date_range = st.sidebar.date_input(
-            "📅 Rango de fechas:",
-            value=(min_date, max_date),
-            min_value=min_date,
-            max_value=max_date
-        )
+        fecha_min = df['fecha'].min().date()
+        fecha_max = df['fecha'].max().date()
+        st.sidebar.info(f"📅 Periodo de datos:\n{fecha_min} al {fecha_max}")
+        
+        # Información adicional sobre fechas
+        st.sidebar.markdown("**Información temporal:**")
+        st.sidebar.write(f"• Registros con fecha: {df['fecha'].notna().sum():,}")
+        st.sidebar.write(f"• Sin fecha: {df['fecha'].isna().sum():,}")
+        
+    # Filtros adicionales (SOLO CATEGÓRICOS)
+    st.sidebar.markdown("### 🎯 Filtros Opcionales")
     
-    # Filtros adicionales
     departamentos = ['Todos'] + sorted(df['departamento'].unique().tolist())
     selected_depto = st.sidebar.selectbox("🏢 Departamento:", departamentos)
     
@@ -214,13 +215,8 @@ if df is not None:
     marcas = ['Todos'] + sorted(df['marca'].unique().tolist())
     selected_marca = st.sidebar.selectbox("🏷️ Marca:", marcas)
     
-    # Aplicar filtros
-    df_filtered = df.copy()
-    
-    if isinstance(date_range, (list, tuple)) and len(date_range) == 2:
-        start_date, end_date = pd.to_datetime(date_range[0]), pd.to_datetime(date_range[1])
-        if 'fecha' in df_filtered.columns:
-            df_filtered = df_filtered[(df_filtered['fecha'] >= start_date) & (df_filtered['fecha'] <= end_date)]
+    # APLICAR SOLO FILTROS CATEGÓRICOS (SIN FILTROS DE FECHA)
+    df_filtered = df.copy()  # Usar todos los datos por defecto
     
     if selected_depto != 'Todos':
         df_filtered = df_filtered[df_filtered['departamento'] == selected_depto]
@@ -240,6 +236,28 @@ if df is not None:
          "📊 Análisis Detallado", "👥 Clientes", "📈 Tendencias"]
     )
     
+    # MOSTRAR ESTADO DE FILTROS
+    st.sidebar.markdown("---")
+    st.sidebar.markdown("### 📊 Estado Actual")
+    st.sidebar.success(f"✅ Datos totales: {len(df):,}")
+    st.sidebar.info(f"📊 Datos mostrados: {len(df_filtered):,}")
+    
+    # Mostrar si hay filtros activos
+    filtros_activos = []
+    if selected_depto != 'Todos':
+        filtros_activos.append(f"Departamento: {selected_depto}")
+    if selected_pago != 'Todos':
+        filtros_activos.append(f"Forma de Pago: {selected_pago}")
+    if selected_marca != 'Todos':
+        filtros_activos.append(f"Marca: {selected_marca}")
+    
+    if filtros_activos:
+        st.sidebar.markdown("**Filtros aplicados:**")
+        for filtro in filtros_activos:
+            st.sidebar.write(f"• {filtro}")
+    else:
+        st.sidebar.markdown("**Sin filtros activos** - Mostrando todos los datos")
+    
     # Calcular métricas
     metricas = calcular_metricas_financieras(df_filtered)
     
@@ -247,13 +265,14 @@ if df is not None:
     if page == "🏠 Dashboard Principal":
         st.header("🏠 Dashboard Principal")
         
-        # Mostrar filtros aplicados
-        with st.expander("ℹ️ Filtros Aplicados"):
-            st.write(f"**Departamento:** {selected_depto}")
-            st.write(f"**Forma de Pago:** {selected_pago}")
-            st.write(f"**Marca:** {selected_marca}")
-            if 'date_range' in locals():
-                st.write(f"**Período:** {date_range[0]} - {date_range[1]}")
+        # Mostrar información de filtros aplicados si los hay
+        if filtros_activos:
+            with st.expander("ℹ️ Filtros Aplicados"):
+                st.write(f"**Departamento:** {selected_depto}")
+                st.write(f"**Forma de Pago:** {selected_pago}")
+                st.write(f"**Marca:** {selected_marca}")
+        else:
+            st.info(f"📊 Mostrando todos los datos disponibles: {len(df_filtered):,} registros")
         
         # KPIs principales
         col1, col2, col3, col4, col5 = st.columns(5)
